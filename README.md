@@ -1,1 +1,3 @@
 # BugiChat
+
+java chatting program
