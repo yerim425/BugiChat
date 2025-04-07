@@ -14,4 +14,16 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>src/images/main_logo.png</name>
+			<type>1</type>
+			<locationURI>PROJECT_LOC/src/main_logo.png</locationURI>
+		</link>
+		<link>
+			<name>src/images/main_logo_small.png</name>
+			<type>1</type>
+			<locationURI>PROJECT_LOC/src/main_logo_small.png</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>

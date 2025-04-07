@@ -1,15 +1,20 @@
 //JavaObjServer.java ObjectStream 기반 채팅 Server
+// 
 
+import java.awt.Color;
 import java.awt.EventQueue;
+import java.awt.Font;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
 import java.io.DataInputStream;
@@ -22,6 +27,7 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.time.LocalTime;
 import java.util.Vector;
 import java.awt.event.ActionEvent;
 import javax.swing.SwingConstants;
@@ -38,9 +44,11 @@ public class BugiChatServer extends JFrame {
 
 	private ServerSocket socket; // 서버소켓
 	private Socket client_socket; // accept() 에서 생성된 client 소켓
-	private Vector UserVec = new Vector(); // 연결된 사용자를 저장할 벡터
+	private Vector<UserService> UserVec = new Vector<UserService>(); // 연결된 사용자를 저장할 벡터
+	private Vector<UserService> SleepUserVec = new Vector<UserService>(); // logout 상태인 사용자를 저장할 벡터
+	private Vector<ChatRoom> ChatRoomVec = new Vector<ChatRoom>(); // 채팅방(ChatRoom)을 저장할 벡터
 	private static final int BUF_LEN = 128; // Windows 처럼 BUF_LEN 을 정의
-
+	
 	/**
 	 * Launch the application.
 	 */
@@ -60,34 +68,56 @@ public class BugiChatServer extends JFrame {
 	/**
 	 * Create the frame.
 	 */
+	// 서버 생성 및 시작
 	public BugiChatServer() {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 338, 440);
+		setBounds(100, 100, 350, 600);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		setContentPane(contentPane);
+		contentPane.setBackground(new Color(122, 178, 211)); // bg color
+		setContentPane(contentPane); 
 		contentPane.setLayout(null);
 
+		JLabel lblbugiIcon = new JLabel(new ImageIcon("src/main_logo_small.png"));
+		lblbugiIcon.setVerticalAlignment(JLabel.CENTER);
+		lblbugiIcon.setBounds(20, 15, 149, 100);
+		contentPane.add(lblbugiIcon);
+		
+		JLabel lblProjectName = new JLabel("BGUI TALK");
+		lblProjectName.setFont(new Font("", Font.BOLD, 24));
+		lblProjectName.setForeground(new Color(12, 39, 108));
+		lblProjectName.setHorizontalAlignment(JLabel.CENTER);
+		lblProjectName.setBounds(180, 30, 150, 30);
+		contentPane.add(lblProjectName);
+		JLabel lblServer = new JLabel("SERVER");
+		lblServer.setFont(new Font("", Font.BOLD, 24));
+		lblServer.setForeground(new Color(12, 39, 108));
+		lblServer.setHorizontalAlignment(JLabel.CENTER);
+		lblServer.setBounds(180, 60, 150, 30);
+		contentPane.add(lblServer);
+		
+		
 		JScrollPane scrollPane = new JScrollPane();
-		scrollPane.setBounds(12, 10, 300, 298);
+		scrollPane.setBounds(15, 120, 320, 350);
+		scrollPane.setBackground(new Color(246, 244, 235));
 		contentPane.add(scrollPane);
-
 		textArea = new JTextArea();
 		textArea.setEditable(false);
 		scrollPane.setViewportView(textArea);
-
-		JLabel lblNewLabel = new JLabel("Port Number");
-		lblNewLabel.setBounds(13, 318, 87, 26);
-		contentPane.add(lblNewLabel);
+		
+		JLabel lblPortLabel = new JLabel("Port Number");
+		lblPortLabel.setBounds(15, 480, 100, 30);
+		contentPane.add(lblPortLabel);
 
 		txtPortNumber = new JTextField();
 		txtPortNumber.setHorizontalAlignment(SwingConstants.CENTER);
 		txtPortNumber.setText("30000");
-		txtPortNumber.setBounds(112, 318, 199, 26);
+		txtPortNumber.setBounds(110, 480, 220, 30);
 		contentPane.add(txtPortNumber);
 		txtPortNumber.setColumns(10);
 
 		JButton btnServerStart = new JButton("Server Start");
+		btnServerStart.setBackground(new Color(246, 244, 235));
 		btnServerStart.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				try {
@@ -104,7 +134,7 @@ public class BugiChatServer extends JFrame {
 				accept_server.start();
 			}
 		});
-		btnServerStart.setBounds(12, 356, 300, 35);
+		btnServerStart.setBounds(15, 515, 320, 40);
 		contentPane.add(btnServerStart);
 	}
 
@@ -147,69 +177,59 @@ public class BugiChatServer extends JFrame {
 	// User 당 생성되는 Thread
 	// Read One 에서 대기 -> Write All
 	class UserService extends Thread {
-		private InputStream is;
-		private OutputStream os;
-		private DataInputStream dis;
-		private DataOutputStream dos;
-
 		private ObjectInputStream ois;
 		private ObjectOutputStream oos;
 
 		private Socket client_socket;
-		private Vector user_vc;
-		public String UserName = "";
-		public String UserStatus;
+		private Vector<UserService> user_vc; // 사용자 벡터 
+		
+		public String userName = ""; // 사용자 이름
+		public String userStatus; // 사용자 연결 상태
+		public ImageIcon userProfileImg = new ImageIcon("src/profile_default.png"); // 프로필 기본 이미지
+		
+		private Vector<String> friendNameVec = new Vector<String>(); // 해당 유저의 친구 벡터
+		private Vector<String> friendWaitVec = new Vector<String>(); // 나 -> 유저 (친구요청) 답변 기다리기 위한 이름 벡터(답변기다림)
+		private Vector<String> friendRcvVec = new Vector<String>(); // 유저 -> 나 (친구요청) 받은 상대 이름 벡터(요청받은상태)
+		private Vector<ChatRoom> userRoomVec = new Vector<ChatRoom>(); // 내가 활동중인 채팅방 벡터
+		
 
 		public UserService(Socket client_socket) {
 			// TODO Auto-generated constructor stub
 			// 매개변수로 넘어온 자료 저장
 			this.client_socket = client_socket;
 			this.user_vc = UserVec;
+			
 			try {
-//				is = client_socket.getInputStream();
-//				dis = new DataInputStream(is);
-//				os = client_socket.getOutputStream();
-//				dos = new DataOutputStream(os);
-
 				oos = new ObjectOutputStream(client_socket.getOutputStream());
 				oos.flush();
 				ois = new ObjectInputStream(client_socket.getInputStream());
 
-				// line1 = dis.readUTF();
-				// /login user1 ==> msg[0] msg[1]
-//				byte[] b = new byte[BUF_LEN];
-//				dis.read(b);		
-//				String line1 = new String(b);
-//
-//				//String[] msg = line1.split(" ");
-//				//UserName = msg[1].trim();
-//				UserStatus = "O"; // Online 상태
-//				Login();
 			} catch (Exception e) {
 				AppendText("userService error");
 			}
 		}
 
 		public void Login() {
-			AppendText("새로운 참가자 " + UserName + " 입장.");
-			WriteOne("Welcome to Java chat server\n");
-			WriteOne(UserName + "님 환영합니다.\n"); // 연결된 사용자에게 정상접속을 알림
-			String msg = "[" + UserName + "]님이 입장 하였습니다.\n";
-			WriteOthers(msg); // 아직 user_vc에 새로 입장한 user는 포함되지 않았다.
+			AppendText("새로운 참가자 " + userName + " 입장.");
+			String msg = "[" + userName + "]님이 입장 하였습니다.\n";
 		}
 
 		public void Logout() {
-			String msg = "[" + UserName + "]님이 퇴장 하였습니다.\n";
-			UserVec.removeElement(this); // Logout한 현재 객체를 벡터에서 지운다
-			WriteAll(msg); // 나를 제외한 다른 User들에게 전송
-			AppendText("사용자 " + "[" + UserName + "] 퇴장. 현재 참가자 수 " + UserVec.size());
+			String msg = "[" + userName + "]님이 퇴장 하였습니다.\n";
+			userStatus = "S"; // Sleep 상태로 변경
+			SleepUserVec.addElement(this); // 서버가 관리하는 Sleep 유저 리스트에 추가
+			// 다른 유저들의 프로그램에 해당 유저가 로그아웃 했다는 표시를 함
+			WriteOthersObject(new ChatMsg(userName, "710", "FriendListRefresh")); // 친구 화면 리스트 수정
+			WriteOthersObject(new ChatMsg(userName, "610", "UserListRefresh"));  // 접속자 화면 리스트 수정
+			
+			AppendText("접속자 " + "[" + userName + "] 종료. 현재 참가자 수 " + UserVec.size());
 		}
 
-		// 모든 User들에게 방송. 각각의 UserService Thread의 WriteONe() 을 호출한다.
+		// 모든 User들에게 방송. 각각의 UserService Thread의 WriteOne() 을 호출한다.
 		public void WriteAll(String str) {
 			for (int i = 0; i < user_vc.size(); i++) {
 				UserService user = (UserService) user_vc.elementAt(i);
-				if (user.UserStatus == "O")
+				if (user.userStatus == "O")
 					user.WriteOne(str);
 			}
 		}
@@ -217,20 +237,29 @@ public class BugiChatServer extends JFrame {
 		public void WriteAllObject(Object ob) {
 			for (int i = 0; i < user_vc.size(); i++) {
 				UserService user = (UserService) user_vc.elementAt(i);
-				if (user.UserStatus == "O")
+				if (user.userStatus == "O")
 					user.WriteOneObject(ob);
 			}
 		}
 
-		// 나를 제외한 User들에게 방송. 각각의 UserService Thread의 WriteONe() 을 호출한다.
+		// 나를 제외한 User들에게 방송. 각각의 UserService Thread의 WriteOne() 을 호출한다.
 		public void WriteOthers(String str) {
 			for (int i = 0; i < user_vc.size(); i++) {
 				UserService user = (UserService) user_vc.elementAt(i);
-				if (user != this && user.UserStatus == "O")
+				if (user != this && user.userStatus == "O")
 					user.WriteOne(str);
 			}
 		}
 
+		// 나를 제외한  User들에게 Object를 방송. 채팅 message와 image object를 보낼 수 있다
+		public void WriteOthersObject(Object ob) {
+			for(int i=0;i<user_vc.size();i++) {
+				UserService user = (UserService) user_vc.elementAt(i);
+				if(user!=this && user.userStatus == "O"){
+						user.WriteOneObject(ob);
+				}
+			}
+		}
 		// Windows 처럼 message 제외한 나머지 부분은 NULL 로 만들기 위한 함수
 		public byte[] MakePacket(String msg) {
 			byte[] packet = new byte[BUF_LEN];
@@ -252,17 +281,11 @@ public class BugiChatServer extends JFrame {
 		// UserService Thread가 담당하는 Client 에게 1:1 전송
 		public void WriteOne(String msg) {
 			try {
-				// dos.writeUTF(msg);
-//				byte[] bb;
-//				bb = MakePacket(msg);
-//				dos.write(bb, 0, bb.length);
 				ChatMsg obcm = new ChatMsg("SERVER", "200", msg);
 				oos.writeObject(obcm);
 			} catch (IOException e) {
-				AppendText("dos.writeObject() error");
+				AppendText("[WriteOne] - dos.writeObject() error");
 				try {
-//					dos.close();
-//					dis.close();
 					ois.close();
 					oos.close();
 					client_socket.close();
@@ -283,7 +306,7 @@ public class BugiChatServer extends JFrame {
 				ChatMsg obcm = new ChatMsg("귓속말", "200", msg);
 				oos.writeObject(obcm);
 			} catch (IOException e) {
-				AppendText("dos.writeObject() error");
+				AppendText("[WritePrivate] - dos.writeObject() error");
 				try {
 					oos.close();
 					client_socket.close();
@@ -302,7 +325,7 @@ public class BugiChatServer extends JFrame {
 			    oos.writeObject(ob);
 			} 
 			catch (IOException e) {
-				AppendText("oos.writeObject(ob) error");		
+				AppendText("[WriteOneObject] - oos.writeObject(ob) error");		
 				try {
 					ois.close();
 					oos.close();
@@ -318,27 +341,46 @@ public class BugiChatServer extends JFrame {
 			}
 		}
 		
+		// client의 list 화면에 user list 출력
+		public void WriteOneUserList(Object obcm) {
+			try {
+				oos.writeObject(obcm);
+			}catch(IOException e) {
+				AppendText("[WriteOneUserList] - dos.writeObject(0 error");
+				try {
+					ois.close();
+					oos.close();
+					client_socket.close();
+					client_socket = null;
+					ois = null;
+					oos = null;
+				}catch(IOException e1) {
+					e1.printStackTrace();
+				}
+				Logout(); //에러가 난 현재 객체를 백터에서 지운다
+			}
+		}
+		
+		// 현재 시간 계산하여 출력
+		private String clacTime() {
+			String time;
+			LocalTime nowTime = LocalTime.now();
+			int hour = nowTime.getHour();
+			int minute = nowTime.getMinute();
+			
+			String min;
+			if(minute<10) min = "0"+minute;
+			else min = ""+minute;
+			
+			if(hour < 12) time = "오전 " + hour + ": " + min;
+			else if(hour == 12) time = "오후 12:" + min;
+			else time = "오후 "+(hour-12) + ":" + min;
+			return time;
+		}
+		
 		public void run() {
 			while (true) { // 사용자 접속을 계속해서 받기 위해 while문
 				try {
-					// String msg = dis.readUTF();
-//					byte[] b = new byte[BUF_LEN];
-//					int ret;
-//					ret = dis.read(b);
-//					if (ret < 0) {
-//						AppendText("dis.read() < 0 error");
-//						try {
-//							dos.close();
-//							dis.close();
-//							client_socket.close();
-//							Logout();
-//							break;
-//						} catch (Exception ee) {
-//							break;
-//						} // catch문 끝
-//					}
-//					String msg = new String(b, "euc-kr");
-//					msg = msg.trim(); // 앞뒤 blank NULL, \n 모두 제거
 					Object obcm = null;
 					String msg = null;
 					ChatMsg cm = null;
@@ -358,16 +400,35 @@ public class BugiChatServer extends JFrame {
 						AppendObject(cm);
 					} else
 						continue;
-					if (cm.getCode().matches("100")) {
-						UserName = cm.getId();
-						UserStatus = "O"; // Online 상태
-						Login();
+					
+					if (cm.getCode().matches("100")) { // 100: 로그인
+						userName = cm.getId();
+						
+						for(int i=0;i<user_vc.size();i++) {
+							UserService user = user_vc.elementAt(i); // 유저 객체
+							if(user.userName.matches(this.userName) && this != user){
+								// 해당 유저와 닉네임이 동일하면,  
+								this.userProfileImg = user.userProfileImg; // 프로필 이미지 가져오기
+								this.friendNameVec = user.friendNameVec; // 친구 이름 리스트 가져오기
+								this.friendWaitVec = user.friendWaitVec; // 친구요청 승낙 기다림 리스트 가져오기
+								this.friendRcvVec = user.friendRcvVec; // 친구요청 추가 전 리스트 가져오기
+								UserVec.remove(user); // 이전 나의 객체가 남아있다면 삭제함
+								user_vc = UserVec;
+							}
+						}
+						userStatus = "O"; // Online 상태로 변경
+						ChatMsg cm2 = new ChatMsg(userName, "500", "ProfileImg"); // 프로필 이미지 set
+						cm2.setProfileImg(userProfileImg);
+						WriteOneObject(cm2);
+						
+						Login(); // 로그인 
+						
 					} else if (cm.getCode().matches("200")) {
 						msg = String.format("[%s] %s", cm.getId(), cm.getData());
 						AppendText(msg); // server 화면에 출력
 						String[] args = msg.split(" "); // 단어들을 분리한다.
 						if (args.length == 1) { // Enter key 만 들어온 경우 Wakeup 처리만 한다.
-							UserStatus = "O";
+							userStatus = "O";
 						} else if (args[1].matches("/exit")) {
 							Logout();
 							break;
@@ -377,17 +438,17 @@ public class BugiChatServer extends JFrame {
 							WriteOne("-----------------------------\n");
 							for (int i = 0; i < user_vc.size(); i++) {
 								UserService user = (UserService) user_vc.elementAt(i);
-								WriteOne(user.UserName + "\t" + user.UserStatus + "\n");
+								WriteOne(user.userName + "\t" + user.userStatus + "\n");
 							}
 							WriteOne("-----------------------------\n");
 						} else if (args[1].matches("/sleep")) {
-							UserStatus = "S";
+							userStatus = "S";
 						} else if (args[1].matches("/wakeup")) {
-							UserStatus = "O";
+							userStatus = "O";
 						} else if (args[1].matches("/to")) { // 귓속말
 							for (int i = 0; i < user_vc.size(); i++) {
 								UserService user = (UserService) user_vc.elementAt(i);
-								if (user.UserName.matches(args[2]) && user.UserStatus.matches("O")) {
+								if (user.userName.matches(args[2]) && user.userStatus.matches("O")) {
 									String msg2 = "";
 									for (int j = 3; j < args.length; j++) {// 실제 message 부분
 										msg2 += args[j];
@@ -401,15 +462,54 @@ public class BugiChatServer extends JFrame {
 								}
 							}
 						} else { // 일반 채팅 메시지
-							UserStatus = "O";
+							userStatus = "O";
 							//WriteAll(msg + "\n"); // Write All
 							WriteAllObject(cm);
 						}
-					} else if (cm.getCode().matches("400")) { // logout message 처리
-						Logout();
+					} else if (cm.getCode().matches("400")) {
+						
 						break;
 					} else if (cm.getCode().matches("300")) {
 						WriteAllObject(cm);
+					}  else if (cm.getCode().matches("500")) { // 프로필 이미지 set
+						this.userProfileImg = cm.getProfileOriginalImg();
+						
+						// 유저들의 친구화면, 접속자화면 Refresh
+						for(int i=0;i<user_vc.size();i++) {
+							UserService user = (UserService) user_vc.elementAt(i);
+							if(user.userStatus.matches("O")) { 
+								user.WriteOneObject(new ChatMsg(user.userName, "610", "UserListRefresh"));
+								user.WriteOneObject(new ChatMsg(user.userName, "710", "friendListRefresh"));
+							}
+						}
+						
+						// 채팅방들 중 내 프로필 사진 Refresh
+						for(int j=0;j<ChatRoomVec.size();j++) {
+							ChatRoom cr = ChatRoomVec.elementAt(j);
+							if(cr.getUserNames().contains(userName)){
+								for(int k=0;k<cr.chatMsgVec.size();k++){
+									ChatMsg c = cr.chatMsgVec.elementAt(k);
+									if(c.getId().equals(userName)) {
+										c.setProfileImg(userProfileImg);
+									}
+								}
+							}
+							
+						}
+						
+					} else if (cm.getCode().matches("510")) { // original 프로필 이미지 가져오기 요청
+						String[] data = cm.getId().split("\\["); // "", "user1]"
+						data = data[1].split("\\]"); // "user1"
+						for(int i=0;i<user_vc.size();i++) {
+							UserService user = user_vc.elementAt(i);
+							if(user.userName.equals(data[0])) { // 해당 유저의 original 프로필 이미지 전송
+								ChatMsg c = new ChatMsg(userName, "510", "Get Original Image");
+								c.setProfileImg(user.userProfileImg);
+								WriteOneObject(c);
+							}
+						}
+					}else if(cm.getCode().matches("900")) { // 프로그램 종료(로그아웃)
+						Logout();
 					}
 				} catch (IOException e) {
 					AppendText("ois.readObject() error");
