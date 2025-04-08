@@ -125,10 +125,6 @@ public class BugiChatClientView extends JFrame {
 
 		try {
 			socket = new Socket(ip_addr, Integer.parseInt(port_no));
-//			is = socket.getInputStream();
-//			dis = new DataInputStream(is);
-//			os = socket.getOutputStream();
-//			dos = new DataOutputStream(os);
 
 			oos = new ObjectOutputStream(socket.getOutputStream());
 			oos.flush();
@@ -160,24 +156,6 @@ public class BugiChatClientView extends JFrame {
 		public void run() {
 			while (true) {
 				try {
-					// String msg = dis.readUTF();
-//					byte[] b = new byte[BUF_LEN];
-//					int ret;
-//					ret = dis.read(b);
-//					if (ret < 0) {
-//						AppendText("dis.read() < 0 error");
-//						try {
-//							dos.close();
-//							dis.close();
-//							socket.close();
-//							break;
-//						} catch (Exception ee) {
-//							break;
-//						}// catch문 끝
-//					}
-//					String	msg = new String(b, "euc-kr");
-//					msg = msg.trim(); // 앞뒤 blank NULL, \n 모두 제거
-
 					Object obcm = null;
 					String msg = null;
 					ChatMsg cm;

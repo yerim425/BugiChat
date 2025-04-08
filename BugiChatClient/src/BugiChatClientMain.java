@@ -1,14 +1,21 @@
 // JavaObjClient.java
 // ObjecStream ����ϴ� ä�� Client
 
+import java.awt.Color;
 import java.awt.EventQueue;
+import java.awt.Font;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
+
+
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -45,62 +52,65 @@ public class BugiChatClientMain extends JFrame {
 	 */
 	public BugiChatClientMain() {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 254, 321);
+		setBounds(100, 100, 350, 500);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		contentPane.setBackground(resources.Colors.MAIN_BG_COLOR);
 		setContentPane(contentPane);
 		contentPane.setLayout(null);
 		
-		JLabel lblNewLabel = new JLabel("User Name");
-		lblNewLabel.setBounds(12, 39, 82, 33);
-		contentPane.add(lblNewLabel);
+		JLabel projectName = new JLabel(resources.Strings.BUGI_TALK);
+		projectName.setFont(resources.Fonts.MAIN_BOLD_28);
+		projectName.setForeground(resources.Colors.MAIN_DARK_BLUE_COLOR);
+		projectName.setHorizontalAlignment(JLabel.CENTER);
+		projectName.setBounds(75, 70, 200, 50);
+		contentPane.add(projectName);
+		
+		JLabel lblbugiIcon = new JLabel(new ImageIcon("src/main_logo.png"));
+		lblbugiIcon.setVerticalAlignment(JLabel.TOP);
+		lblbugiIcon.setBounds(90, 130, 194, 130);
+		contentPane.add(lblbugiIcon);
+		
+		
+		JLabel lbluserName = new JLabel(resources.Strings.NICKNAME);
+		lbluserName.setFont(resources.Fonts.MAIN_BOLD_16);
+		lbluserName.setForeground(resources.Colors.MAIN_DARK_BLUE_COLOR);
+		lbluserName.setBounds(70, 280, 50, 30);
+		contentPane.add(lbluserName);
 		
 		txtUserName = new JTextField();
+		txtUserName.setFont(resources.Fonts.MAIN_PLAIN_15);
 		txtUserName.setHorizontalAlignment(SwingConstants.CENTER);
-		txtUserName.setBounds(101, 39, 116, 33);
-		contentPane.add(txtUserName);
+		txtUserName.setBounds(120, 280, 150, 30);
 		txtUserName.setColumns(10);
+		contentPane.add(txtUserName);
 		
-		JLabel lblIpAddress = new JLabel("IP Address");
-		lblIpAddress.setBounds(12, 100, 82, 33);
-		contentPane.add(lblIpAddress);
+		JButton btnLogin = new JButton(resources.Strings.LOGIN);
 		
-		txtIpAddress = new JTextField();
-		txtIpAddress.setHorizontalAlignment(SwingConstants.CENTER);
-		txtIpAddress.setText("127.0.0.1");
-		txtIpAddress.setColumns(10);
-		txtIpAddress.setBounds(101, 100, 116, 33);
-		contentPane.add(txtIpAddress);
+		btnLogin.setFont(resources.Fonts.MAIN_BOLD_16);
+		btnLogin.setBounds(125, 320, 90, 40);
+		btnLogin.setBorder(BorderFactory.createEmptyBorder(0,0,0,0));
+		btnLogin.setForeground(resources.Colors.MAIN_DARK_BLUE_COLOR);
+		btnLogin.setHorizontalAlignment(SwingConstants.CENTER);
+		contentPane.add(btnLogin);
 		
-		JLabel lblPortNumber = new JLabel("Port Number");
-		lblPortNumber.setBounds(12, 163, 82, 33);
-		contentPane.add(lblPortNumber);
 		
-		txtPortNumber = new JTextField();
-		txtPortNumber.setText("30000");
-		txtPortNumber.setHorizontalAlignment(SwingConstants.CENTER);
-		txtPortNumber.setColumns(10);
-		txtPortNumber.setBounds(101, 163, 116, 33);
-		contentPane.add(txtPortNumber);
-		
-		JButton btnConnect = new JButton("Connect");
-		btnConnect.setBounds(12, 223, 205, 38);
-		contentPane.add(btnConnect);
 		Myaction action = new Myaction();
-		btnConnect.addActionListener(action);
+		btnLogin.addActionListener(action);
 		txtUserName.addActionListener(action);
-		txtIpAddress.addActionListener(action);
-		txtPortNumber.addActionListener(action);
 	}
-	class Myaction implements ActionListener // ����Ŭ������ �׼� �̺�Ʈ ó�� Ŭ����
+	class Myaction implements ActionListener 
 	{
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			String username = txtUserName.getText().trim();
-			String ip_addr = txtIpAddress.getText().trim();
-			String port_no = txtPortNumber.getText().trim();
+			String ip_addr = "127.0.0.1";
+			String port_no = "30000";
+			
 			BugiChatClientView view = new BugiChatClientView(username, ip_addr, port_no);
 			setVisible(false);
+			view.setBounds(getLocation().x, getLocation().y, 350, 600);
+			view.setVisible(true);
 		}
 	}
 }

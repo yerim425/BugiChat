@@ -186,7 +186,7 @@ public class BugiChatServer extends JFrame {
 		public String userName = ""; // 사용자 이름
 		public String userStatus; // 사용자 연결 상태
 		public ImageIcon userProfileImg = new ImageIcon("src/profile_default.png"); // 프로필 기본 이미지
-		
+		public ImageIcon userProfileImg_resized = new ImageIcon("src/profile_default.png"); 
 		private Vector<String> friendNameVec = new Vector<String>(); // 해당 유저의 친구 벡터
 		private Vector<String> friendWaitVec = new Vector<String>(); // 나 -> 유저 (친구요청) 답변 기다리기 위한 이름 벡터(답변기다림)
 		private Vector<String> friendRcvVec = new Vector<String>(); // 유저 -> 나 (친구요청) 받은 상대 이름 벡터(요청받은상태)
@@ -466,20 +466,21 @@ public class BugiChatServer extends JFrame {
 							//WriteAll(msg + "\n"); // Write All
 							WriteAllObject(cm);
 						}
+					} else if (cm.getCode().matches("300")) {
+						//WriteAllObject(cm);
+						
 					} else if (cm.getCode().matches("400")) {
 						
-						break;
-					} else if (cm.getCode().matches("300")) {
-						WriteAllObject(cm);
 					}  else if (cm.getCode().matches("500")) { // 프로필 이미지 set
 						this.userProfileImg = cm.getProfileOriginalImg();
+						//this.userProfileImg_resized = cm.getProfileResizedImg();
 						
 						// 유저들의 친구화면, 접속자화면 Refresh
 						for(int i=0;i<user_vc.size();i++) {
 							UserService user = (UserService) user_vc.elementAt(i);
 							if(user.userStatus.matches("O")) { 
 								user.WriteOneObject(new ChatMsg(user.userName, "610", "UserListRefresh"));
-								user.WriteOneObject(new ChatMsg(user.userName, "710", "friendListRefresh"));
+								user.WriteOneObject(new ChatMsg(user.userName, "710", "FriendListRefresh"));
 							}
 						}
 						
@@ -508,7 +509,127 @@ public class BugiChatServer extends JFrame {
 								WriteOneObject(c);
 							}
 						}
-					}else if(cm.getCode().matches("900")) { // 프로그램 종료(로그아웃)
+					}else if(cm.getCode().matches("600")) { // user list 출력을 위해 user 정보 보내기
+						if(cm.getData().matches("all")) {
+							WriteOthersObject(new ChatMsg(userName, "610", "UserListRefresh"));
+						}
+						else {
+							ChatMsg up = new ChatMsg(this.userName, "600", "Me");
+							up.setProfileImg(this.userProfileImg);
+							WriteOneObject(up); // 내 profile 정보 보내기
+							
+							for (int i = 0; i < user_vc.size(); i++) { // 다른 유저들 리스트 보내기
+								UserService user = (UserService) user_vc.elementAt(i);
+								if(user != this && user.userStatus.matches("O")) {
+									up = new ChatMsg(user.userName, "600", "None"); // 친구x, 신청 상태x
+									up.setProfileImg(user.userProfileImg);
+									
+									if(friendNameVec.contains(user.userName)){ // 친구일 경우
+										up = new ChatMsg(user.userName, "600", "Friend");
+										up.setProfileImg(user.userProfileImg);
+									}
+									if(friendWaitVec.contains(user.userName)){ // 친구x, 신청 상태o
+										up = new ChatMsg(user.userName, "600", "Wait");
+										up.setProfileImg(user.userProfileImg);
+										
+									}
+									WriteOneObject(up);
+									
+								}
+							}
+						}
+						
+					}
+					else if (cm.getCode().matches("700")) { // 친구 list 출력
+
+						if(cm.getData().matches("all")) {
+							WriteAllObject(new ChatMsg(userName, "710", "UserListRefresh"));
+						}
+						else {
+							ChatMsg fp;
+							for (int i = 0; i < user_vc.size(); i++) {
+								UserService user = (UserService) user_vc.elementAt(i);
+								if(user != this) {
+									if(friendNameVec.contains(user.userName)){ // 친구일 경우
+										fp = new ChatMsg(user.userName, "700", "Friend");
+										fp.setProfileImg(user.userProfileImg);
+										//fp.setProfileImg_resized(user.UserProfileImg_resized);
+										fp.setStatus(user.userStatus);
+										WriteOneObject(fp);
+									}
+									if(friendRcvVec.contains(user.userName)){ // 친구x, 신청 상태o
+										fp = new ChatMsg(user.userName, "700", "Receive");
+										fp.setProfileImg(user.userProfileImg);
+										WriteOneObject(fp);
+									}
+								}	
+							}
+						}
+						
+					}
+					else if (cm.getCode().matches("701")) { // 친구 추가 신청
+
+						// 신청을 받은 user의 name
+						String friend = cm.getData();
+						
+						for (int i = 0; i < user_vc.size(); i++) {
+							UserService user = (UserService) user_vc.elementAt(i);
+							if(user.userName.matches(friend)) {
+								this.friendWaitVec.add(friend); // 나는 상대방(friend)의 승낙을 기다림(wait)
+								user.friendRcvVec.add(userName); // 상대방(friend)는 나의 친구 요청을 받음(receive)
+								
+								if(user.userStatus.matches("O")) { // 상대방의 친구 목록 새로고침(내가 보낸 친구 요청을 버튼으로 띄우기 위해)
+									user.WriteOneObject(new ChatMsg(user.userName, "710", "FriendListRefresh"));
+								}	
+		
+							}
+						}	
+					}
+					else if (cm.getCode().matches("702")) { // 친구 추가 승낙
+
+						for (int i = 0; i < user_vc.size(); i++) {
+							UserService user = (UserService) user_vc.elementAt(i);
+							if(user.userName.matches(cm.getData())) {
+								this.friendRcvVec.remove(this.friendRcvVec.indexOf(user.userName)); // 내 Recv 리스트에서 제거
+								user.friendWaitVec.remove(user.friendWaitVec.indexOf(this.userName)); // 상대방의 Wait 리스트에서 제거
+								if(user.friendRcvVec.contains(this.userName)) // 상대방의 Recv 리스트에 내가 있다면 제거(혹시 모를 상황)
+									user.friendRcvVec.remove(user.friendRcvVec.indexOf(this.userName));
+								if(this.friendWaitVec.contains(user.userName)) // 내 Wait 리스트에 상대방이 있었다면 제거(혹시 모를 상황)
+									this.friendWaitVec.remove(this.friendWaitVec.indexOf(user.userName));
+								
+								this.friendNameVec.add(user.userName); // 내 친구 리스트에 상대방 이름 추가
+								user.friendNameVec.add(this.userName); // 상대방 친구 리스트에 내 이름 추가
+								
+								if(user.userStatus.matches("O")) { // 상대방이 온라인 상태라면, 상대방의 유저 리스트들 리프레시
+									user.WriteOneObject(new ChatMsg(user.userName, "610", "UserListRefresh"));
+									user.WriteOneObject(new ChatMsg(user.userName, "710", "friendListRefresh"));
+								}
+								this.WriteOneObject(new ChatMsg(userName, "710", "friendListRefresh"));
+								// 상대방의 친구 목록과 접속자 목록 새로고침, 나의 친구 목록 새로고침
+							}
+						}
+					}
+					else if (cm.getCode().matches("703")) { // 친구 추가 거절
+
+						for (int i = 0; i < user_vc.size(); i++) {
+							UserService user = (UserService) user_vc.elementAt(i);
+							if(user.userName.matches(cm.getData())) {
+								this.friendRcvVec.remove(this.friendRcvVec.indexOf(user.userName)); 
+								user.friendWaitVec.remove(user.friendWaitVec.indexOf(this.userName));
+								if(user.friendRcvVec.contains(this.userName))
+									user.friendRcvVec.remove(user.friendRcvVec.indexOf(this.userName));
+								if(this.friendWaitVec.contains(user.userName))
+									this.friendWaitVec.remove(this.friendWaitVec.indexOf(user.userName));
+								
+								if(user.userStatus.matches("O")) {// 상대방의 친구 목록과 접속자 목록 새로고침
+									user.WriteOneObject(new ChatMsg(user.userName, "610", "UserListRefresh"));
+									user.WriteOneObject(new ChatMsg(user.userName, "710", "friendListRefresh"));
+								}
+								
+							}
+						}
+					}
+					else if(cm.getCode().matches("900")) { // 프로그램 종료(로그아웃)
 						Logout();
 					}
 				} catch (IOException e) {
