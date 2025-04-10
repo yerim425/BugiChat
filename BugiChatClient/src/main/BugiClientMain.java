@@ -1,5 +1,6 @@
 // JavaObjClient.java
 // ObjecStream ����ϴ� ä�� Client
+package main;
 
 import java.awt.Color;
 import java.awt.EventQueue;
@@ -20,7 +21,7 @@ import javax.swing.JButton;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
-public class BugiChatClientMain extends JFrame {
+public class BugiClientMain extends JFrame {
 
 	/**
 	 * 
@@ -38,7 +39,7 @@ public class BugiChatClientMain extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					BugiChatClientMain frame = new BugiChatClientMain();
+					BugiClientMain frame = new BugiClientMain();
 					frame.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -50,7 +51,7 @@ public class BugiChatClientMain extends JFrame {
 	/**
 	 * Create the frame.
 	 */
-	public BugiChatClientMain() {
+	public BugiClientMain() {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 350, 500);
 		contentPane = new JPanel();
@@ -107,7 +108,7 @@ public class BugiChatClientMain extends JFrame {
 			String ip_addr = "127.0.0.1";
 			String port_no = "30000";
 			
-			BugiChatClientView view = new BugiChatClientView(username, ip_addr, port_no);
+			BugiClientView view = new BugiClientView(username, ip_addr, port_no);
 			setVisible(false);
 			view.setBounds(getLocation().x, getLocation().y, 350, 600);
 			view.setVisible(true);

@@ -472,7 +472,7 @@ public class BugiChatServer extends JFrame {
 					} else if (cm.getCode().matches("400")) {
 						
 					}  else if (cm.getCode().matches("500")) { // 프로필 이미지 set
-						this.userProfileImg = cm.getProfileOriginalImg();
+						this.userProfileImg = cm.getProfileImg();
 						//this.userProfileImg_resized = cm.getProfileResizedImg();
 						
 						// 유저들의 친구화면, 접속자화면 Refresh

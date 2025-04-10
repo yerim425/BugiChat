@@ -9,10 +9,10 @@ class ChatMsg implements Serializable {
 	private String code; // 100:로그인, 400:로그아웃, 200:채팅메시지, 300:Image
 	private String data;
 	private String userList; 
-	private ImageIcon profileImg_ori;
-	private ImageIcon profileImg_resized;
-	private ImageIcon chatImg_ori;
-	private ImageIcon chatImg_resized;
+	private ImageIcon profileImg;
+	//private ImageIcon profileImg_resized;
+	private ImageIcon chatImg;
+	//private ImageIcon chatImg_resized;
 	
 	
 	// Msg 
@@ -64,41 +64,41 @@ class ChatMsg implements Serializable {
 	}
 
 	public void setChatImg(ImageIcon img) {
-		this.chatImg_ori = img;
-		this.chatImg_resized = resizedChatImg(img);
+		this.chatImg = img;
+		//this.chatImg_resized = resizedChatImg(img);
 	}
-	
-	public ImageIcon getChatResizedImg() {
-		return chatImg_resized;
-	}
+//	
+//	public ImageIcon getChatResizedImg() {
+//		return chatImg_resized;
+//	}
 	
 	public ImageIcon getChatOriginalImg() {
-		return chatImg_ori;
+		return chatImg;
 	}
 	
 	public void setProfileImg(ImageIcon img) {
-		this.profileImg_ori = img;
-		this.profileImg_resized = resizedProfileImg(img);
+		this.profileImg = img;
+		//this.profileImg_resized = resizedProfileImg(img);
+	}
+//	
+//	public ImageIcon getProfileResizedImg() {
+//		return profileImg_resized;
+//	}
+	
+	public ImageIcon getProfileImg() {
+		return profileImg;
 	}
 	
-	public ImageIcon getProfileResizedImg() {
-		return profileImg_resized;
-	}
-	
-	public ImageIcon getProfileOriginalImg() {
-		return profileImg_ori;
-	}
-	
-	// 채팅 이미지의 사이즈 조정하여 리턴
-	private ImageIcon resizedChatImg(ImageIcon img) {
-		//////////////////////////////////수정
-		ImageIcon resizedImg = img;
-		return resizedImg;
-	}
-	// 프로필 이미지의 사이즈 조정하여 리턴
-	private ImageIcon resizedProfileImg(ImageIcon img) {
-		//////////////////////////////////수정
-		ImageIcon resizedImg = img;
-		return resizedImg;
-	}
+//	// 채팅 이미지의 사이즈 조정하여 리턴
+//	private ImageIcon resizedChatImg(ImageIcon img) {
+//		//////////////////////////////////수정
+//		ImageIcon resizedImg = img;
+//		return resizedImg;
+//	}
+//	// 프로필 이미지의 사이즈 조정하여 리턴
+//	private ImageIcon resizedProfileImg(ImageIcon img) {
+//		//////////////////////////////////수정
+//		ImageIcon resizedImg = img;
+//		return resizedImg;
+//	}
 }
